@@ -27,17 +27,30 @@ module Graticule #:nodoc:
       }
 
       # Creates a new GoogleGeocode that will use Google Maps API +key+.
-      def initialize(key)
+      # Options:
+      # * :geocode_delay: sleep this number of seconds before each #locate call. Use this to 
+      #   avoid exceeding geocode service provision limits, e.g. during a batch geocode. 
+      #   Ex. :geocode_delay => 0.05
+      def initialize(key, options = {})
         @key = key
         @url = URI.parse 'http://maps.google.com/maps/geo'
+        @geocode_delay = options.delete :geocode_delay
       end
 
       # Locates +address+ returning a Location
       def locate(address)
+        delay_before_locate
         get :q => address.is_a?(String) ? address : location_from_params(address).to_s
       end
 
     private
+    
+      # Sleeps for @geocode_delay seconds 
+      def delay_before_locate
+        return unless @geocode_delay
+        RAILS_DEFAULT_LOGGER.debug "*** Graticule::Geocoder.locate sleeping #{@geocode_delay} seconds..."
+        sleep(@geocode_delay) 
+      end
 
       # Extracts a Location from +xml+.
       def parse_response(xml) #:nodoc:
