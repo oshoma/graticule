@@ -31,6 +31,8 @@ module Graticule
         ) * EARTH_RADIUS[units.to_sym]
       end
 
+      # We round the value within ACOS() to avoid a rounding error on PostgreSQL. 
+      # Round only accepts numerics, so we also cast the type.
       def self.to_sql(options)
         options = {
           :units => :miles,
@@ -38,11 +40,13 @@ module Graticule
           :longitude_column => 'longitude'
         }.merge(options)
         %{(ACOS(
+          ROUND(CAST(   
             SIN(RADIANS(#{options[:latitude]})) *
             SIN(RADIANS(#{options[:latitude_column]})) +
             COS(RADIANS(#{options[:latitude]})) *
             COS(RADIANS(#{options[:latitude_column]})) *
             COS(RADIANS(#{options[:longitude_column]}) - RADIANS(#{options[:longitude]}))
+           as numeric), 16)
           ) * #{Graticule::Distance::EARTH_RADIUS[options[:units].to_sym]})
         }.gsub("\n", '').squeeze(" ")
       end
